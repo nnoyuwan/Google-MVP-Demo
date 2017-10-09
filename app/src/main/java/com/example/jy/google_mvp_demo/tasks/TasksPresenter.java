@@ -71,6 +71,7 @@ public class TasksPresenter implements TasksContract.Presenter{
 
         // The network request might be handled in a different thread so make sure Espresso knows
         // that the app is busy until the response is handled.
+        //测试环境模拟获取数据延时
         EspressoIdlingResource.increment(); // App is busy until further notice
     }
 
