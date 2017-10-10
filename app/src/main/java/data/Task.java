@@ -1,4 +1,4 @@
-package data.source;
+package data;
 
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -92,6 +92,15 @@ public class Task {
     @Nullable
     public String getTitle() {
         return mTitle;
+    }
+
+    @Nullable
+    public String getTitleForList() {
+        if (!Strings.isNullOrEmpty(mTitle)) {
+            return mTitle;
+        } else {
+            return mDescription;
+        }
     }
 
     @Nullable

@@ -7,7 +7,8 @@ import com.example.jy.google_mvp_demo.BaseView;
 
 import java.util.List;
 
-import data.source.Task;
+import data.Task;
+
 
 /**
  * ProjectName:Google-MVP-Demo
@@ -42,6 +43,10 @@ public class TasksContract {
         void showCompletedFilterLabel();
 
         void showAllFilterLabel();
+
+        void showNoActiveTasks();
+
+        void showNoCompletedTasks();
 
         void showSuccessfullySavedMessage();
 

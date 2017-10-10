@@ -1,13 +1,15 @@
 package data.source;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import data.source.local.TasksDataSource;
+import data.Task;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -27,16 +29,16 @@ public class TasksRepository implements TasksDataSource {
 
     private static TasksRepository INSTANCE = null;
 
-    private final TasksDataSource mTasksRemoteDataSoure;
+    private final TasksDataSource mTasksRemoteDataSource;
 
-    private final TasksDataSource mTasksLocalDataSoure;
+    private final TasksDataSource mTasksLocalDataSource;
 
     /**
      * This variable has package local visibility so it can be accessed from tests.
      *
      * @param callback
      */
-    Map<String, data.source.Task> mCachedTasks;
+    Map<String, Task> mCachedTasks;
 
     /**
      * Marks the cache as invalid, to force an update the next time data is requested. This variable
@@ -47,8 +49,8 @@ public class TasksRepository implements TasksDataSource {
     // Prevent direct instantiation.
     private TasksRepository(@NonNull TasksDataSource tasksRemoteDataSoure,
                             @NonNull TasksDataSource tasksLocalDataSoure) {
-        mTasksRemoteDataSoure = tasksRemoteDataSoure;
-        mTasksLocalDataSoure = tasksLocalDataSoure;
+        mTasksRemoteDataSource = tasksRemoteDataSoure;
+        mTasksLocalDataSource = tasksLocalDataSoure;
     }
 
     /**
@@ -86,7 +88,7 @@ public class TasksRepository implements TasksDataSource {
      * @param callback
      */
     @Override
-    public void getTasks(@NonNull LoadTasksCallback callback) {
+    public void getTasks(@NonNull final LoadTasksCallback callback) {
         checkNotNull(callback);
 
         //Respond immediately with cache if available and not dirty
@@ -102,83 +104,217 @@ public class TasksRepository implements TasksDataSource {
             getTasksFromRemoteDataSource(callback);
         } else {
             //Query the local storage if available. If not, query the network.
-            //没有缓存从数据库加载
-            mTasksLocalDataSoure.getTasks(new LoadTasksCallback() {
+            //本地可用从本地加载，否则从网络获取
+            mTasksLocalDataSource.getTasks(new LoadTasksCallback() {
                 @Override
-                public void onTasksLoaded(List<data.source.Task> tasks) {
+                public void onTasksLoaded(List<Task> tasks) {
                     refreshCache(tasks);
+                    callback.onTasksLoaded(new ArrayList<>(mCachedTasks.values()));
                 }
 
                 @Override
                 public void onDataNotAvailable() {
-
+                    getTasksFromRemoteDataSource(callback);
                 }
             });
         }
     }
 
-    private void getTasksFromRemoteDataSource(LoadTasksCallback callback) {
 
+    @Override
+    public void saveTask(@NonNull Task task) {
+        checkNotNull(task);
+        mTasksRemoteDataSource.saveTask(task);
+        mTasksLocalDataSource.saveTask(task);
+
+        // Do in memory cache update to keep the app UI up to date
+        if (mCachedTasks == null) {
+            mCachedTasks = new LinkedHashMap<>();
+        }
+        mCachedTasks.put(task.getId(), task);
     }
 
-    private void refreshCache(List<data.source.Task> tasks) {
+    @Override
+    public void completeTask(@NonNull Task task) {
+        checkNotNull(task);
+        mTasksRemoteDataSource.completeTask(task);
+        mTasksLocalDataSource.completeTask(task);
+
+        Task completedTask = new Task(task.getTitle(), task.getDescription(), task.getId(), true);
+        // Do in memory cache update to keep the app UI up to date
+        if (mCachedTasks == null) {
+            mCachedTasks = new LinkedHashMap<>();
+        }
+        mCachedTasks.put(task.getId(), completedTask);
+    }
+
+    @Override
+    public void completeTask(@NonNull String taskId) {
+        checkNotNull(taskId);
+        completeTask(getTaskWithId(taskId));
+    }
+
+    @Override
+    public void activateTask(@NonNull Task task) {
+        checkNotNull(task);
+        mTasksRemoteDataSource.activateTask(task);
+        mTasksLocalDataSource.activateTask(task);
+
+        Task activeTask = new Task(task.getTitle(), task.getDescription(), task.getId());
+
+        // Do in memory cache update to keep the app UI up to date
+        if (mCachedTasks == null) {
+            mCachedTasks = new LinkedHashMap<>();
+        }
+        mCachedTasks.put(task.getId(), activeTask);
+    }
+
+    @Override
+    public void activateTask(@NonNull String taskId) {
+        checkNotNull(taskId);
+        activateTask(getTaskWithId(taskId));
+    }
+
+    @Override
+    public void clearCompletedTasks() {
+        mTasksRemoteDataSource.clearCompletedTasks();
+        mTasksLocalDataSource.clearCompletedTasks();
+
+        // Do in memory cache update to keep the app UI up to date
+        if (mCachedTasks == null) {
+            mCachedTasks = new LinkedHashMap<>();
+        }
+        Iterator<Map.Entry<String, Task>> iterator = mCachedTasks.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Task> entry = iterator.next();
+            if (entry.getValue().isEmpty()) {
+                iterator.remove();
+            }
+        }
+    }
+
+
+    /**
+     * Gets tasks from local data source (sqlite) unless the table is new or empty. In that case it
+     * uses the network data source. This is done to simplify the sample.
+     * <p>
+     * Note: {@link GetTaskCallback#onDataNotAvailable()} is fired if both data sources fail to
+     * get the data.
+     */
+    @Override
+    public void getTask(@NonNull final String taskId, @NonNull final GetTaskCallback callback) {
+        checkNotNull(taskId);
+        checkNotNull(callback);
+
+        Task cachedTask = getTaskWithId(taskId);
+
+        //Respond immediately with cache if available
+        if (cachedTask != null) {
+            callback.onTaskLoaded(cachedTask);
+            return;
+        }
+
+        //Load from server/persisted if needed.
+
+        //Is the task in the local data source? If not, query the network.
+        mTasksLocalDataSource.getTask(taskId, new GetTaskCallback() {
+            @Override
+            public void onTaskLoaded(Task task) {
+                //Do in memory cache updateto keep the app UI up to date
+                if (mCachedTasks == null) {
+                    mCachedTasks = new LinkedHashMap<String, Task>();
+                }
+                mCachedTasks.put(task.getId(), task);
+                callback.onTaskLoaded(task);
+            }
+
+            @Override
+            public void onDataNotAvailable() {
+                mTasksRemoteDataSource.getTask(taskId, new GetTaskCallback() {
+                    @Override
+                    public void onTaskLoaded(Task task) {
+                        // Do in memory cache update to keep the app UI up to date
+                        if (mCachedTasks == null) {
+                            mCachedTasks = new LinkedHashMap<String, Task>();
+                        }
+                        mCachedTasks.put(task.getId(), task);
+                        callback.onTaskLoaded(task);
+                    }
+
+                    @Override
+                    public void onDataNotAvailable() {
+                        callback.onDataNotAvailable();
+                    }
+                });
+            }
+        });
+    }
+
+    @Override
+    public void refreshTasks() {
+        mCacheIsDirty = true;
+    }
+
+    @Override
+    public void deleteAllTasks() {
+        mTasksLocalDataSource.deleteAllTasks();
+        mTasksRemoteDataSource.deleteAllTasks();
+
         if (mCachedTasks == null) {
             mCachedTasks = new LinkedHashMap<>();
         }
         mCachedTasks.clear();
-        for (data.source.Task task : tasks) {
+    }
+
+    @Override
+    public void deleteTask(@NonNull String taskId) {
+        mTasksRemoteDataSource.deleteTask(taskId);
+        mTasksLocalDataSource.deleteTask(taskId);
+
+        mCachedTasks.remove(taskId);
+    }
+
+    private void getTasksFromRemoteDataSource(final LoadTasksCallback callback) {
+        mTasksRemoteDataSource.getTasks(new LoadTasksCallback() {
+            @Override
+            public void onTasksLoaded(List<Task> tasks) {
+                refreshCache(tasks);
+                refreshLocalDataSource(tasks);
+                callback.onTasksLoaded(new ArrayList<>(mCachedTasks.values()));
+            }
+
+            @Override
+            public void onDataNotAvailable() {
+                callback.onDataNotAvailable();
+            }
+        });
+    }
+
+    private void refreshCache(List<Task> tasks) {
+        if (mCachedTasks == null) {
+            mCachedTasks = new LinkedHashMap<>();
+        }
+        mCachedTasks.clear();
+        for (Task task : tasks) {
             mCachedTasks.put(task.getId(), task);
         }
         mCacheIsDirty = false;
     }
 
-    @Override
-    public void getTask(@NonNull String taskId, @NonNull GetTaskCallback callback) {
-
+    private void refreshLocalDataSource(List<Task> tasks) {
+        mTasksLocalDataSource.deleteAllTasks();
+        for (Task task : tasks) {
+            mTasksLocalDataSource.saveTask(task);
+        }
     }
 
-    @Override
-    public void saveTask(@NonNull data.source.Task task) {
-
-    }
-
-    @Override
-    public void completeTask(@NonNull data.source.Task task) {
-
-    }
-
-    @Override
-    public void completeTask(@NonNull String taskId) {
-
-    }
-
-    @Override
-    public void activateTask(@NonNull data.source.Task task) {
-
-    }
-
-    @Override
-    public void activateTask(@NonNull String taskId) {
-
-    }
-
-    @Override
-    public void clearCompletedTasks() {
-
-    }
-
-    @Override
-    public void refreshTasks() {
-
-    }
-
-    @Override
-    public void deleteAllTasks() {
-
-    }
-
-    @Override
-    public void deleteTask(@NonNull String taskId) {
-
+    @Nullable
+    private Task getTaskWithId(@NonNull String id) {
+        checkNotNull(id);
+        if (mCachedTasks == null || mCachedTasks.isEmpty()) {
+            return null;
+        } else {
+            return mCachedTasks.get(id);
+        }
     }
 }
