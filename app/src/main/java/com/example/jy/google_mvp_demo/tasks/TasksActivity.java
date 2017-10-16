@@ -15,6 +15,8 @@ import com.example.jy.google_mvp_demo.R;
 import com.example.jy.google_mvp_demo.statistics.StatisticsActivity;
 import com.example.jy.google_mvp_demo.util.ActivityUtils;
 
+import data.Injection;
+
 /**
  * ProjectName:Google-MVP-Demo
  * Date:2017/9/26 0:06
@@ -51,14 +53,15 @@ public class TasksActivity extends AppCompatActivity {
             setupDrawerContent(navigationView);
         }
 
-        TasksFragment taskFragment = (TasksFragment) getSupportFragmentManager().findFragmentById(R.id.contentFrame);
-        if (taskFragment == null) {
-            taskFragment = TasksFragment.newInstance();
-            ActivityUtils.addFragmentToActivity(getSupportFragmentManager(), taskFragment, R.id.contentFrame);
+        TasksFragment tasksFragment = (TasksFragment) getSupportFragmentManager().findFragmentById(R.id.contentFrame);
+        if (tasksFragment == null) {
+            tasksFragment = TasksFragment.newInstance();
+            ActivityUtils.addFragmentToActivity(getSupportFragmentManager(), tasksFragment, R.id.contentFrame);
         }
 
         //Create the presenter
-
+        mTasksPresenter = new TasksPresenter(
+                Injection.provideTasksRepository(getApplicationContext()), tasksFragment);
     }
 
     private void setupDrawerContent(NavigationView navigationView) {
