@@ -134,7 +134,6 @@ public class TasksLocalDataSource implements TasksDataSource {
         values.put(TaskEntry.COLUMN_NAME_COMPLETED, task.isCompleted());
 
         db.insert(TaskEntry.TABLE_NAME, null, values);
-
         db.close();
     }
 
@@ -180,7 +179,6 @@ public class TasksLocalDataSource implements TasksDataSource {
         String[] selectionArgs = {"1"};
 
         db.delete(TaskEntry.TABLE_NAME, selection, selectionArgs);
-
         db.close();
     }
 
@@ -193,9 +191,7 @@ public class TasksLocalDataSource implements TasksDataSource {
     @Override
     public void deleteAllTasks() {
         SQLiteDatabase db = mDbHelper.getWritableDatabase();
-
         db.delete(TaskEntry.TABLE_NAME, null, null);
-
         db.close();
     }
 
@@ -207,7 +203,6 @@ public class TasksLocalDataSource implements TasksDataSource {
         String[] selectionArgs = {taskId};
 
         db.delete(TaskEntry.TABLE_NAME, selection, selectionArgs);
-
         db.close();
     }
 }

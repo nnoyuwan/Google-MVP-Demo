@@ -102,7 +102,6 @@ public class FakeTasksRemoteDataSource implements TasksDataSource {
 
     @VisibleForTesting
     public void addTasks(Task... tasks) {
-
         for (Task task : tasks) {
             TASKS_SERVICE_DATA.put(task.getId(), task);
         }

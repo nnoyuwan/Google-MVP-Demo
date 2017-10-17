@@ -22,6 +22,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import com.example.jy.google_mvp_demo.R;
+import com.example.jy.google_mvp_demo.addedittask.AddEditTaskActivity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -88,16 +89,16 @@ public class TasksFragment extends Fragment implements TasksContract.View {
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.tasks_frag, container, false);
-        ListView listView = (ListView) root.findViewById(R.id.tasks_list);
+        ListView listView = root.findViewById(R.id.tasks_list);
         listView.setAdapter(mListAdapter);
-        mFilteringLabelView = (TextView) root.findViewById(R.id.filteringLabel);
-        mTasksView = (LinearLayout) root.findViewById(R.id.tasksLL);
+        mFilteringLabelView = root.findViewById(R.id.filteringLabel);
+        mTasksView = root.findViewById(R.id.tasksLL);
 
         // Set up  no tasks view
         mNoTasksView = root.findViewById(R.id.noTasks);
-        mNoTaskIcon = (ImageView) root.findViewById(R.id.noTasksIcon);
-        mNoTaskMainView = (TextView) root.findViewById(R.id.noTasksMain);
-        mNoTaskAddView = (TextView) root.findViewById(R.id.noTasksAdd);
+        mNoTaskIcon = root.findViewById(R.id.noTasksIcon);
+        mNoTaskMainView = root.findViewById(R.id.noTasksMain);
+        mNoTaskAddView = root.findViewById(R.id.noTasksAdd);
         mNoTaskAddView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -107,7 +108,7 @@ public class TasksFragment extends Fragment implements TasksContract.View {
 
         // Set up floating action button
         FloatingActionButton fab =
-                (FloatingActionButton) getActivity().findViewById(R.id.fab_add_task);
+                getActivity().findViewById(R.id.fab_add_task);
 
         fab.setImageResource(R.drawable.ic_add);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -120,9 +121,9 @@ public class TasksFragment extends Fragment implements TasksContract.View {
         // Set up progress indicator
         final ScrollChildSwipeRefreshLayout swipeRefreshLayout = root.findViewById(R.id.refresh_layout);
         swipeRefreshLayout.setColorSchemeColors(
-                ContextCompat.getColor(getActivity(),R.color.colorPrimary),
-                ContextCompat.getColor(getActivity(),R.color.colorAccent),
-                ContextCompat.getColor(getActivity(),R.color.colorPrimaryDark));
+                ContextCompat.getColor(getActivity(), R.color.colorPrimary),
+                ContextCompat.getColor(getActivity(), R.color.colorAccent),
+                ContextCompat.getColor(getActivity(), R.color.colorPrimaryDark));
 
         // Set the scrolling view in the custom SwipeRefreshLayout.
         swipeRefreshLayout.setScrollUpChild(listView);
@@ -142,8 +143,9 @@ public class TasksFragment extends Fragment implements TasksContract.View {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()){
+        switch (item.getItemId()) {
             case R.id.menu_clear:
+                mPresenter.clearCompletedTasks();
                 break;
             case R.id.menu_filter:
                 showFilteringPopUpMenu();
@@ -189,7 +191,8 @@ public class TasksFragment extends Fragment implements TasksContract.View {
 
     @Override
     public void showAddTask() {
-
+        Intent intent = new Intent(getContext(), AddEditTaskActivity.class);
+        startActivityForResult(intent, AddEditTaskActivity.REQUEST_ADD_TASK);
     }
 
     @Override
@@ -304,9 +307,9 @@ public class TasksFragment extends Fragment implements TasksContract.View {
             }
 
             final Task task = getItem(i);
-            TextView titleTV = (TextView) rowView.findViewById(R.id.title);
+            TextView titleTV = rowView.findViewById(R.id.title);
             titleTV.setText(task.getTitleForList());
-            CheckBox completeCB = (CheckBox) rowView.findViewById(R.id.complete);
+            CheckBox completeCB = rowView.findViewById(R.id.complete);
 
             // Active/completed task UI
             completeCB.setChecked(task.isCompleted());
@@ -321,11 +324,11 @@ public class TasksFragment extends Fragment implements TasksContract.View {
             completeCB.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                     if (!task.isCompleted()){
-                         mTaskItemListener.onCompleteTaskClick(task);
-                     }else {
-                         mTaskItemListener.onActiviteTaskClick(task);
-                     }
+                    if (!task.isCompleted()) {
+                        mTaskItemListener.onCompleteTaskClick(task);
+                    } else {
+                        mTaskItemListener.onActiviteTaskClick(task);
+                    }
                 }
             });
 
