@@ -46,6 +46,7 @@ public class AddEditTaskFragment extends Fragment implements AddEditTaskContract
         mPresenter.start();
     }
 
+    @Override
     public void setPresenter(@NonNull AddEditTaskContract.Presenter presenter) {
         mPresenter = checkNotNull(presenter);
     }
